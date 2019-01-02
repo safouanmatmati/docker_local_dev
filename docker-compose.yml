@@ -1,0 +1,78 @@
+version:                 '3.7'
+
+services:
+  php:
+    image:               ${CONTAINER_REGISTRY_BASE}/php
+    build:
+      context:           ./php_app
+      target:            image_php
+      cache_from:
+        - ${CONTAINER_REGISTRY_BASE}/php
+        - ${CONTAINER_REGISTRY_BASE}/nginx
+    volumes:
+      # Uncomment next line to disable truely xdebug (it will replace builded one by this one empty)
+      # - ./php_app/docker/php/xdebug/xdebug.ini:/usr/local/etc/php/conf.d/xdebug.ini:ro
+      # development conf
+      - ./php_app/docker/php/dev:/usr/local/etc/php/conf.d/development:ro
+      # project files
+      - ./php_app:/srv/php_app:rw,cached
+    ports:
+      - "9000:9000"
+    networks:
+      - local_network
+
+  server:
+    image:               ${CONTAINER_REGISTRY_BASE}/nginx
+    build:
+      context:           ./php_app
+      target:            image_nginx
+      cache_from:
+        - ${CONTAINER_REGISTRY_BASE}/php
+        - ${CONTAINER_REGISTRY_BASE}/nginx
+    depends_on:
+      - php
+    volumes:
+      - ./php_app/public:/srv/php_app/public:ro
+    ports:
+      - "8080:80"
+    networks:
+      - local_network
+
+  postgresql:
+    image:               ${CONTAINER_REGISTRY_BASE}/postgresql
+    build:
+      context:           ./db/postgresql
+      cache_from:
+        - ${CONTAINER_REGISTRY_BASE}/postgresql
+    env_file:
+      - ./db/postgresql/.env
+    volumes:
+      - local_postgresql_data:/var/lib/postgresql/data:rw
+    ports:
+      - "5432:5432"
+    networks:
+      - local_network
+
+  mariadb:
+    image:               ${CONTAINER_REGISTRY_BASE}/mariadb
+    build:
+      context:           ./db/mariadb
+      cache_from:
+        - ${CONTAINER_REGISTRY_BASE}/mariadb
+    env_file:
+      - ./db/mariadb/.env
+    volumes:
+      - local_mariadb_data:/var/lib/mariadb/data:rw
+    ports:
+      - "3306:3306"
+    networks:
+      - local_network
+
+networks:
+  local_network:
+
+volumes:
+  local_postgresql_data:
+    external:            true
+  local_mariadb_data:
+    external:            true
